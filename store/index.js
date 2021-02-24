@@ -10,7 +10,7 @@ loadScript();
 const createStore = () => {
   return new Vuex.Store({
     state: {
-      reforestationImageryLayer: undefined
+      reforestationImageryLayer: undefined,
     },
     getters: {},
     mutations: {},
@@ -20,20 +20,20 @@ const createStore = () => {
           "esri/Map",
           "esri/views/MapView",
           "esri/layers/ImageryLayer",
-          "esri/layers/support/RasterFunction"
+          "esri/layers/support/RasterFunction",
         ])
           .then(([Map, MapView, ImageryLayer, RasterFunction]) => {
             this.map = new Map({
-              basemap: "streets" // Basemap layer service
+              basemap: "streets", // Basemap layer service
             });
             this.view = new MapView({
               map: this.map,
               center: [-85.805, 40.027], // Longitude, latitude
               zoom: 4, // Zoom level
-              container: "mapDiv" // Div element
+              container: "mapDiv", // Div element
             });
           })
-          .catch(err => {
+          .catch((err) => {
             console.log("ERROR: " + err);
           });
       },
@@ -42,7 +42,7 @@ const createStore = () => {
           this.imageryLayer = new ImageryLayer({
             url:
               "https://cumulus.tnc.org/arcgis/rest/services/nascience/reforestation_potential_groa/ImageServer",
-            format: "jpgpng" // server exports in either jpg or png format
+            format: "jpgpng", // server exports in either jpg or png format
             // renderingRule: colorRF
           });
           this.map.add(this.imageryLayer);
@@ -62,7 +62,7 @@ const createStore = () => {
                   [4, 65, 128, 79],
                   [5, 34, 102, 51],
                   [(6, 34, 102, 51)],
-                  [(6.5, 34, 102, 51)]
+                  [(6.5, 34, 102, 51)],
 
                   //   [0.3, 220, 245, 233],
                   //   [0.6, 202, 232, 214],
@@ -77,18 +77,18 @@ const createStore = () => {
                   //   [(5, 253, 254, 152)],
                   //   [(5.5, 253, 254, 152)],
                   //   [(6, 253, 254, 152)]
-                ]
+                ],
                 // Setting the previous raster function to the Raster
                 // property of a new raster function allows you to chain functions
                 // raster: remapRF
               },
-              outputPixelType: "U8"
+              outputPixelType: "U8",
             });
             this.imageryLayer.renderingRule = this.colorRF2;
           }
         );
-      }
-    }
+      },
+    },
   });
 };
 
