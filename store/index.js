@@ -15,22 +15,26 @@ const createStore = () => {
     getters: {},
     mutations: {},
     actions: {
-      createMap() {
-        loadModules([
-          "esri/Map",
-          "esri/views/MapView",
-          "esri/layers/ImageryLayer",
-          "esri/layers/support/RasterFunction",
-        ])
-          .then(([Map, MapView, ImageryLayer, RasterFunction]) => {
+      initMap(context) {
+        // init raster functions on load of site
+        context.dispatch("initRasterFunctions");
+
+        // load map and mapView objects
+        loadModules(["esri/Map", "esri/views/MapView"])
+          .then(([Map, MapView]) => {
             this.map = new Map({
               basemap: "streets", // Basemap layer service
             });
             this.view = new MapView({
               map: this.map,
-              center: [-85.805, 40.027], // Longitude, latitude
-              zoom: 4, // Zoom level
+              center: [-50.805, 10.027], // Longitude, latitude
+              zoom: 3, // Zoom level
               container: "mapDiv", // Div element
+            });
+
+            // when view object is done loading, add imageryLayer
+            this.view.when((evt) => {
+              context.dispatch("addImageryLayer");
             });
           })
           .catch((err) => {
@@ -43,48 +47,64 @@ const createStore = () => {
             url:
               "https://cumulus.tnc.org/arcgis/rest/services/nascience/reforestation_potential_groa/ImageServer",
             format: "jpgpng", // server exports in either jpg or png format
-            // renderingRule: colorRF
+            renderingRule: this.colorFunction,
           });
           this.map.add(this.imageryLayer);
         });
       },
       changeImageryLayer() {
+        this.imageryLayer.renderingRule = this.colorRF2;
+      },
+      initRasterFunctions() {
         loadModules(["esri/layers/support/RasterFunction"]).then(
           ([RasterFunction]) => {
+            this.stretchFunction = new RasterFunction({
+              functionName: "Stretch",
+              functionArguments: {
+                StretchType: 4, // (0 = None, 3 = StandardDeviation, 4 = Histogram Equalization, 5 = MinMax, 6 = PercentClip, 9 = Sigmoid)
+                Min: 0,
+                Max: 255,
+                Raster: "$$", // $$(default) refers to the entire image service, $2 refers to the second image of the image service
+              },
+              outputPixelType: "u8",
+            });
+
+            this.colorFunction = new RasterFunction({
+              functionName: "Colormap",
+              functionArguments: {
+                // ColorrampName: "Green Light to Dark", // other examples: "Slope", "Surface", "Blue Bright"....
+                Raster: this.stretchFunction, // chaining multiple rasterfunctions
+                colorramp: {
+                  type: "multipart",
+                  colorRamps: [
+                    {
+                      type: "algorithmic",
+                      fromColor: [220, 245, 233, 255],
+                      toColor: [34, 102, 51, 255],
+                      algorithm: "esriHSVAlgorithm",
+                    },
+                    // {
+                    //   type: "algorithmic",
+                    //   fromColor: [155, 34, 78, 255],
+                    //   toColor: [255, 0, 0, 255],
+                    //   algorithm: "esriCIELabAlgorithm",
+                    // },
+                  ],
+                },
+              },
+            });
+
             this.colorRF2 = new RasterFunction({
               functionName: "Colormap",
               functionArguments: {
-                colormap: [
-                  [0, 220, 245, 233],
-                  [1, 178, 214, 190],
-                  [2, 136, 184, 149],
-                  [3, 100, 156, 113],
-                  [4, 65, 128, 79],
-                  [5, 34, 102, 51],
-                  [(6, 34, 102, 51)],
-                  [(6.5, 34, 102, 51)],
+                ColorrampName: "Blue Bright",
 
-                  //   [0.3, 220, 245, 233],
-                  //   [0.6, 202, 232, 214],
-                  //   [1, 184, 219, 196],
-                  //   [1.5, 253, 254, 152],
-                  //   [2, 253, 254, 152],
-                  //   [2.5, 253, 254, 152],
-                  //   [3, 253, 254, 152],
-                  //   [3.5, 253, 254, 152],
-                  //   [4, 253, 254, 152],
-                  //   [4.5, 253, 254, 152],
-                  //   [(5, 253, 254, 152)],
-                  //   [(5.5, 253, 254, 152)],
-                  //   [(6, 253, 254, 152)]
-                ],
                 // Setting the previous raster function to the Raster
                 // property of a new raster function allows you to chain functions
-                // raster: remapRF
+                raster: this.stretchFunction,
               },
               outputPixelType: "U8",
             });
-            this.imageryLayer.renderingRule = this.colorRF2;
           }
         );
       },
