@@ -20,8 +20,12 @@ const createStore = () => {
         context.dispatch("initRasterFunctions");
 
         // load map and mapView objects
-        loadModules(["esri/Map", "esri/views/MapView"])
-          .then(([Map, MapView]) => {
+        loadModules([
+          "esri/Map",
+          "esri/views/MapView",
+          "esri/layers/FeatureLayer",
+        ])
+          .then(([Map, MapView, FeatureLayer]) => {
             this.map = new Map({
               basemap: "streets", // Basemap layer service
             });
@@ -34,7 +38,22 @@ const createStore = () => {
 
             // when view object is done loading, add imageryLayer
             this.view.when((evt) => {
-              context.dispatch("addImageryLayer");
+              var vectorLayer1 = new FeatureLayer({
+                opacity: 50,
+                url:
+                  "https://cumulus.tnc.org/arcgis/rest/services/nascience/NCS_Reforestation_potential_by_admin_unit/MapServer/0",
+              });
+              var vectorLayer2 = new FeatureLayer({
+                opacity: 50,
+                url:
+                  "https://cumulus.tnc.org/arcgis/rest/services/nascience/NCS_Reforestation_potential_by_admin_unit/MapServer/1",
+              });
+              var vectorLayer3 = new FeatureLayer({
+                opacity: 50,
+                url:
+                  "https://cumulus.tnc.org/arcgis/rest/services/nascience/NCS_Reforestation_potential_by_admin_unit/MapServer/2",
+              });
+              this.map.addMany([vectorLayer1, vectorLayer2, vectorLayer3]);
             });
           })
           .catch((err) => {

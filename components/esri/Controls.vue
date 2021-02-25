@@ -1,25 +1,48 @@
 <template>
-  <div><button @click="onButtonClick">Click to change Raster</button></div>
+  <div>
+    <div class="main-button-wrapper">
+      <b-button
+        @click="onVectorButtonClick"
+        :pressed="vectorPress"
+        variant="success"
+        size="sm"
+        >View Vector Data</b-button
+      >
+      <b-button
+        @click="onRasterButtonClick"
+        :pressed="rasterPress"
+        variant="success"
+        size="sm"
+        >View Raster Data</b-button
+      >
+    </div>
+  </div>
 </template>
 
 <script>
-import { loadModules } from "esri-loader";
 export default {
+  data() {
+    return {
+      vectorPress: true,
+      rasterPress: false,
+    };
+  },
   methods: {
-    onButtonClick() {
-      this.$store.dispatch("changeImageryLayer");
-      console.log("btn click");
-      // loadModules([
-      //   "esri/Map",
-      //   "esri/views/MapView",
-      //   "esri/layers/ImageryLayer",
-      //   "esri/layers/support/RasterFunction"
-      // ]).then(([Map, MapView, ImageryLayer, RasterFunction]) => {
-      //   console.log("look in here");
-      //   console.log(this.imageryLayer);
-      //   this.imageryLayer.renderingRule = this.colorRF2; // Set rendering rule to the raster function
-      // });
-    }
-  }
+    onVectorButtonClick() {
+      this.vectorPress = true;
+      this.rasterPress = false;
+    },
+    onRasterButtonClick() {
+      this.vectorPress = false;
+      this.rasterPress = true;
+    },
+  },
 };
 </script>
+
+<style>
+.main-button-wrapper {
+  margin-top: 10px;
+  text-align: center;
+}
+</style>
