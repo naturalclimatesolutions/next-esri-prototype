@@ -1,7 +1,7 @@
 <template>
   <div class="sidebar-wrapper">
     <div class="sidebar-header">
-      Nuxt ESRI Beta App
+      Nuxt ESRI Beta Application
     </div>
     <EsriControls />
   </div>
