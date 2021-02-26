@@ -27,10 +27,16 @@ const createStore = () => {
         context.dispatch("initRasterFunctions");
 
         // load map and mapView objects
-        loadModules(["esri/Map", "esri/views/MapView"])
-          .then(([Map, MapView]) => {
+        loadModules([
+          "esri/widgets/Sketch",
+          "esri/Map",
+          "esri/layers/GraphicsLayer",
+          "esri/views/MapView",
+        ])
+          .then(([Sketch, Map, GraphicsLayer, MapView]) => {
+            context.state.drawLayer = new GraphicsLayer();
             this.map = new Map({
-              basemap: "streets", // Basemap layer service
+              basemap: "gray-vector", // Basemap layer service
             });
             context.state.view = new MapView({
               map: this.map,
@@ -38,6 +44,15 @@ const createStore = () => {
               zoom: 3, // Zoom level
               container: "mapDiv", // Div element
             });
+
+            context.state.sketch = new Sketch({
+              layer: context.state.drawLayer,
+              view: context.state.view,
+              // graphic will be selected as soon as it is created
+              creationMode: "update",
+            });
+
+            context.state.view.ui.add(context.state.sketch, "top-right");
 
             // when view object is done loading, add imageryLayer
             context.state.view.when((evt) => {
@@ -120,6 +135,7 @@ const createStore = () => {
       },
       remapImageryLayerValues(context) {
         this.imageryLayer.renderingRule = this.mapColorToRemappedRaster;
+        context.dispatch("queryImageServiceByPolygon");
       },
       initRasterFunctions() {
         loadModules(["esri/layers/support/RasterFunction"]).then(
@@ -219,6 +235,28 @@ const createStore = () => {
             console.log(err);
             console.log(err.response);
           });
+      },
+      queryImageServiceByPolygon() {
+        // the query below works
+        let geometryPoly = `{"rings": [[[-80.06138, 32.837],[-79.06133, 35.836],[-77.06124, 33.834],[-80.06138, 32.837]]],"spatialReference": { "wkid": 4326 }}`;
+        let url2 =
+          "https://cumulus.tnc.org/arcgis/rest/services/nascience/reforestation_potential_groa/ImageServer/computeStatisticsHistograms?geometry=" +
+          encodeURI(geometryPoly) +
+          "&geometryType=esriGeometryPolygon&mosaicRule=&renderingRule=&renderingRules=&pixelSize=&time=&returnGeometry=false&returnCatalogItems=false&f=pjson";
+
+        this.$axios
+          .get(url2, {})
+          // if successfull
+          .then((response) => {
+            console.log(response);
+          })
+          // if error
+          .catch((err) => {
+            console.log(err);
+            console.log(err.response);
+          });
+
+        ("computeStatisticsHistograms");
       },
     },
   });
