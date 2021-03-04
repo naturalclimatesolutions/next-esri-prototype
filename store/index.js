@@ -35,9 +35,7 @@ const createStore = () => {
     },
     mutations: {
       setRasterPolyStats(state, stats) {
-        console.log(stats);
         state.rasterPolyStats = stats;
-        console.log(state.rasterPolyStats);
       },
     },
     actions: {
@@ -109,7 +107,7 @@ const createStore = () => {
             console.log("ERROR: " + err);
           });
       },
-      addImageryLayer() {
+      addImageryLayer(context) {
         this.map.removeAll();
         loadModules(["esri/layers/ImageryLayer"]).then(([ImageryLayer]) => {
           this.imageryLayer = new ImageryLayer({
@@ -117,6 +115,13 @@ const createStore = () => {
               "https://cumulus.tnc.org/arcgis/rest/services/nascience/reforestation_potential_groa/ImageServer",
             format: "jpgpng", // server exports in either jpg or png format
             renderingRule: this.greenColorFunction,
+          });
+
+          this.imageryLayer2 = new ImageryLayer({
+            url:
+              "https://cumulus.tnc.org/arcgis/rest/services/nascience/reforestation_potential_groa/ImageServer",
+            format: "jpgpng", // server exports in either jpg or png format
+            // renderingRule: this.greenColorFunction,
           });
           this.map.add(this.imageryLayer);
         });
@@ -152,7 +157,10 @@ const createStore = () => {
       remapImageryLayerValues(context) {
         this.imageryLayer.renderingRule = this.mapColorToRemappedRaster;
       },
-      initRasterFunctions() {
+      sumRasterLayers(context) {
+        this.imageryLayer.renderingRule = this.sumRasters;
+      },
+      initRasterFunctions(context) {
         loadModules(["esri/layers/support/RasterFunction"]).then(
           ([RasterFunction]) => {
             this.stretchFunction = new RasterFunction({
@@ -180,12 +188,6 @@ const createStore = () => {
                       toColor: [34, 102, 51, 255],
                       algorithm: "esriHSVAlgorithm",
                     },
-                    // {
-                    //   type: "algorithmic",
-                    //   fromColor: [155, 34, 78, 255],
-                    //   toColor: [255, 0, 0, 255],
-                    //   algorithm: "esriCIELabAlgorithm",
-                    // },
                   ],
                 },
               },
@@ -211,6 +213,17 @@ const createStore = () => {
                 Raster: "$$", // Apply remap to the image service
               },
               outputPixelType: "U8",
+            });
+
+            this.sumRasters = new RasterFunction({
+              functionName: "Arithmetic",
+              functionArguments: {
+                Raster: this.imageryLayer, // Apply remap to the image service
+                // Raster2: 1000,
+                Raster2: this.imageryLayer2,
+                Operation: 1, // 1 is the variable for sum or add
+              },
+              // outputPixelType: "U8",
             });
 
             this.mapColorToRemappedRaster = new RasterFunction({

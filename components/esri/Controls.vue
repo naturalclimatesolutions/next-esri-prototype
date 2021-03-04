@@ -52,6 +52,12 @@
         <b-button @click="remapImageryLayer" variant="secondary" size="sm"
           >Remap raster values to two values</b-button
         >
+        <!-- <br />
+        <br />
+        <div>Sum two rasters</div>
+        <b-button @click="sumRasters" variant="secondary" size="sm"
+          >Sum two raster</b-button
+        > -->
       </div>
       <hr />
       <div class="raster-query-wrapper">
@@ -104,6 +110,9 @@ export default {
     },
     remapImageryLayer() {
       this.$store.dispatch("remapImageryLayerValues");
+    },
+    sumRasters() {
+      this.$store.dispatch("sumRasterLayers");
     },
   },
 };
