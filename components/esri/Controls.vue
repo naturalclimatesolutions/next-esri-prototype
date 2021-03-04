@@ -57,6 +57,13 @@
       <div class="raster-query-wrapper">
         <h5>Raster Query</h5>
         <div>Click on raster to get value: {{ rasterPixelValue }}</div>
+        <div>
+          <h5>Raster Polygon Query</h5>
+          <div>Click on map to draw polygon, double click to finish</div>
+          <b-button @click="drawPolygon" variant="secondary" size="sm"
+            >Click to start polygon</b-button
+          >
+        </div>
       </div>
     </div>
   </div>
@@ -76,6 +83,9 @@ export default {
     },
   },
   methods: {
+    drawPolygon() {
+      this.$store.dispatch("enableCreatePolygon");
+    },
     onVectorButtonClick() {
       this.vectorPress = true;
       this.rasterPress = false;
@@ -112,5 +122,9 @@ export default {
   margin-left: 15px;
   text-align: left;
   padding-top: 20px;
+}
+.raster-query-wrapper {
+  padding-left: 20px;
+  font-size: 15px;
 }
 </style>

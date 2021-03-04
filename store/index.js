@@ -14,13 +14,32 @@ const createStore = () => {
       map: undefined,
       view: undefined,
       rasterPixelValue: "NoData",
+      rasterPolyStats: {
+        max: 0,
+        min: 0,
+        median: 0,
+        mode: 0,
+        mean: 0,
+        standardDeviation: 0,
+        count: 0,
+        time: 0,
+      },
     },
     getters: {
       rasterPixelValue(state) {
         return state.rasterPixelValue;
       },
+      rasterPolyStats(state) {
+        return state.rasterPolyStats;
+      },
     },
-    mutations: {},
+    mutations: {
+      setRasterPolyStats(state, stats) {
+        console.log(stats);
+        state.rasterPolyStats = stats;
+        console.log(state.rasterPolyStats);
+      },
+    },
     actions: {
       initMap(context) {
         // init raster functions on load of site
@@ -28,12 +47,12 @@ const createStore = () => {
 
         // load map and mapView objects
         loadModules([
-          "esri/widgets/Sketch",
           "esri/Map",
           "esri/layers/GraphicsLayer",
           "esri/views/MapView",
+          "esri/views/draw/Draw",
         ])
-          .then(([Sketch, Map, GraphicsLayer, MapView]) => {
+          .then(([Map, GraphicsLayer, MapView, Draw]) => {
             context.state.drawLayer = new GraphicsLayer();
             this.map = new Map({
               basemap: "gray-vector", // Basemap layer service
@@ -44,12 +63,9 @@ const createStore = () => {
               zoom: 3, // Zoom level
               container: "mapDiv", // Div element
             });
-
-            context.state.sketch = new Sketch({
-              layer: context.state.drawLayer,
+            // draw object
+            context.state.draw = new Draw({
               view: context.state.view,
-              // graphic will be selected as soon as it is created
-              creationMode: "update",
             });
 
             context.state.view.ui.add(context.state.sketch, "top-right");
@@ -135,7 +151,6 @@ const createStore = () => {
       },
       remapImageryLayerValues(context) {
         this.imageryLayer.renderingRule = this.mapColorToRemappedRaster;
-        context.dispatch("queryImageServiceByPolygon");
       },
       initRasterFunctions() {
         loadModules(["esri/layers/support/RasterFunction"]).then(
@@ -236,27 +251,103 @@ const createStore = () => {
             console.log(err.response);
           });
       },
-      queryImageServiceByPolygon() {
-        // the query below works
-        let geometryPoly = `{"rings": [[[-80.06138, 32.837],[-79.06133, 35.836],[-77.06124, 33.834],[-80.06138, 32.837]]],"spatialReference": { "wkid": 4326 }}`;
-        let url2 =
-          "https://cumulus.tnc.org/arcgis/rest/services/nascience/reforestation_potential_groa/ImageServer/computeStatisticsHistograms?geometry=" +
-          encodeURI(geometryPoly) +
-          "&geometryType=esriGeometryPolygon&mosaicRule=&renderingRule=&renderingRules=&pixelSize=&time=&returnGeometry=false&returnCatalogItems=false&f=pjson";
+      queryImageServiceByPolygon(context, evt, geometry) {
+        loadModules(["esri/geometry/support/webMercatorUtils"]).then(
+          ([webMercatorUtils]) => {
+            const newGeomArray = [];
+            context.state.graphic.geometry.rings[0].forEach((ring) => {
+              newGeomArray.push(webMercatorUtils.xyToLngLat(ring[0], ring[1]));
+            });
+            let geomPoly = `{"rings": [${JSON.stringify(
+              newGeomArray
+            )}],"spatialReference": { "wkid": 4326 }}`;
+            let url =
+              "https://cumulus.tnc.org/arcgis/rest/services/nascience/reforestation_potential_groa/ImageServer/computeStatisticsHistograms?geometry=" +
+              encodeURI(geomPoly) +
+              "&geometryType=esriGeometryPolygon&mosaicRule=&renderingRule=&renderingRules=&pixelSize=&time=&returnGeometry=false&returnCatalogItems=false&f=pjson";
+            var d = new Date();
+            var n = d.getTime();
+            this.$axios
+              .get(url, {})
+              // if successfull
+              .then((response) => {
+                var d2 = new Date();
+                var n2 = d2.getTime();
+                // console.log("after", n, n2, Math.abs(n - n2));
 
-        this.$axios
-          .get(url2, {})
-          // if successfull
-          .then((response) => {
-            console.log(response);
-          })
-          // if error
-          .catch((err) => {
-            console.log(err);
-            console.log(err.response);
+                // context.state.totalTime = Math.abs(n - n2);
+                response.data.statistics[0].time = Math.abs(n - n2);
+                context.commit(
+                  "setRasterPolyStats",
+                  response.data.statistics[0]
+                );
+              })
+              // if error
+              .catch((err) => {
+                console.log(err);
+                console.log(err.response);
+              });
+
+            ("computeStatisticsHistograms");
+          }
+        );
+      },
+      enableCreatePolygon(context) {
+        loadModules(["esri/views/draw/PolygonDrawAction"]).then(
+          ([PolygonDrawAction]) => {
+            var action = context.state.draw.create("polygon");
+
+            // PolygonDrawAction.vertex-add
+            // Fires when user clicks, or presses the "F" key.
+            // Can also be triggered when the "R" key is pressed to redo.
+            action.on("vertex-add", function(evt) {
+              context.dispatch("createPolygonGraphic", evt.vertices);
+            });
+
+            // PolygonDrawAction.vertex-remove
+            // Fires when the "Z" key is pressed to undo the last added vertex
+            action.on("vertex-remove", function(evt) {
+              context.dispatch("createPolygonGraphic", evt.vertices);
+            });
+
+            // Fires when the pointer moves over the view
+            action.on("cursor-update", function(evt) {
+              context.dispatch("createPolygonGraphic", evt.vertices);
+            });
+
+            // Add a graphic representing the completed polygon
+            // when user double-clicks on the view or presses the "C" key
+            action.on("draw-complete", function(evt) {
+              context.dispatch("createPolygonGraphic", evt.vertices);
+              context.dispatch("queryImageServiceByPolygon");
+            });
+          }
+        );
+      },
+      createPolygonGraphic(context, vertices) {
+        loadModules(["esri/Graphic"]).then(([Graphic]) => {
+          context.state.view.graphics.removeAll();
+          var polygon = {
+            type: "polygon", // autocasts as Polygon
+            rings: vertices,
+            spatialReference: context.state.view.spatialReference,
+          };
+
+          context.state.graphic = new Graphic({
+            geometry: polygon,
+            symbol: {
+              type: "simple-fill", // autocasts as SimpleFillSymbol
+              color: "rgba(100,100,100,.5)",
+              style: "solid",
+              outline: {
+                // autocasts as SimpleLineSymbol
+                color: "white",
+                width: 1,
+              },
+            },
           });
-
-        ("computeStatisticsHistograms");
+          context.state.view.graphics.add(context.state.graphic);
+        });
       },
     },
   });
